@@ -42,3 +42,5 @@ highlight default link context	Label
 highlight default link date	Comment
 highlight default link complete	Delimiter
 "highlight default link tag		Preproc
+
+syntax region todoFold start='^#' end=/^#/me=s-2 transparent fold
