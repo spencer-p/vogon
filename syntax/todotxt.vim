@@ -28,7 +28,7 @@ syntax match project	'\(^\|\W\)+[^[:blank:]]\+'	contains=NONE
 syntax match context	'\(^\|\W\)@[^[:blank:]]\+'	contains=NONE
 syntax match date		'\d\{2,4\}-\d\{2\}-\d\{2\}' contains=NONE
 syntax match complete	'^x\>'						contains=NONE
-"syntax match tag		'\w\+:\w\+'
+syntax match specialTag	'\(^\|\W\)[^[:blank:]]\+:[^[:blank:]]\+'	contains=NONE
 
 highlight default link today	TodoToday
 highlight default link inbox	TodoInbox
@@ -39,8 +39,8 @@ highlight default link header	TodoHeader
 
 highlight default link project	Keyword
 highlight default link context	Label
-highlight default link date	Comment
+highlight default link date		Comment
 highlight default link complete	Delimiter
-"highlight default link tag		Preproc
+highlight default link specialTag		Comment
 
 syntax region todoFold start='^#' end=/^#/me=s-2 transparent fold
