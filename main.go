@@ -214,7 +214,7 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input io.Re
 			return false
 		}
 
-		return *logged.Children[i].CompletionDate < *logged.Children[j].CompletionDate
+		return *logged.Children[i].CompletionDate > *logged.Children[j].CompletionDate
 	})
 
 	result, err := t.MarshalText_()
