@@ -9,11 +9,11 @@ if !exists('g:main_syntax')
   let g:main_syntax = 'todo.txt'
 endif
 
-highlight TodoToday	term=bold cterm=bold ctermfg=Black ctermbg=Yellow
-highlight TodoInbox	term=bold cterm=bold ctermfg=Black ctermbg=Cyan
-highlight TodoNext	term=bold cterm=bold ctermfg=Black ctermbg=Green
-highlight TodoSched	term=bold cterm=bold ctermfg=Black ctermbg=Red
-highlight TodoLog	term=bold cterm=bold ctermfg=Black ctermbg=Blue
+highlight TodoToday	term=bold cterm=bold ctermfg=Black ctermbg=DarkYellow
+highlight TodoInbox	term=bold cterm=bold ctermfg=Black ctermbg=DarkCyan
+highlight TodoNext	term=bold cterm=bold ctermfg=Black ctermbg=DarkGreen
+highlight TodoSched	term=bold cterm=bold ctermfg=Black ctermbg=DarkRed
+highlight TodoLog	term=bold cterm=bold ctermfg=Black ctermbg=DarkBlue
 highlight TodoHeader	term=bold cterm=bold ctermfg=White ctermbg=Black
 highlight TodoContext	ctermfg=Green
 
