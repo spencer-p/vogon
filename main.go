@@ -20,7 +20,7 @@ const (
 )
 
 type TodoTxt struct {
-	Groupings []Grouping `@@*`
+	Groupings []Grouping `Newline* @@*`
 }
 
 type Grouping struct {
@@ -103,8 +103,15 @@ func (t TodoTxt) MarshalText_() ([]byte, error) {
 	var buf bytes.Buffer
 
 	for i, g := range t.Groupings {
+		if len(g.Children) == 0 {
+			// Not an exhaustive check; there may be many nil-valued children.
+			continue
+		}
 		if i > 0 {
 			fmt.Fprintln(&buf)
+		}
+		if i == 0 && len(g.Header) == 0 {
+			g.Header = []string{"Inbox"}
 		}
 		fmt.Fprintf(&buf, "# %s\n\n", strings.Join(g.Header, " "))
 		for _, e := range g.Children {
