@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -52,81 +53,6 @@ type DescriptionPart struct {
 type SpecialTag struct {
 	Key   string `@Text`
 	Value string `":" @Text`
-}
-
-func (e *Entry) MarshalText_() ([]byte, error) {
-	if e == nil {
-		return []byte{}, nil
-	}
-
-	buf := new(bytes.Buffer)
-	if e.Completed {
-		buf.WriteByte('x')
-	} else {
-		buf.WriteByte(' ')
-	}
-	if e.Priority != nil {
-		fmt.Fprintf(buf, " %s", *e.Priority)
-	}
-	if e.CompletionDate != nil {
-		fmt.Fprintf(buf, " %s", *e.CompletionDate)
-	}
-	if e.CreationDate != nil {
-		fmt.Fprintf(buf, " %s", *e.CreationDate)
-	}
-	for _, p := range e.Description {
-		buf.WriteByte(' ')
-		switch {
-		case len(p.Text) != 0:
-			for i := range p.Text {
-				if i != 0 {
-					buf.WriteByte(' ')
-				}
-				buf.WriteString(p.Text[i])
-			}
-		case p.Context != nil:
-			buf.WriteByte('@')
-			buf.WriteString(*p.Context)
-		case p.Project != nil:
-			buf.WriteByte('+')
-			buf.WriteString(*p.Project)
-		case p.SpecialTag != nil:
-			buf.WriteString(p.SpecialTag.Key)
-			buf.WriteByte(':')
-			buf.WriteString(p.SpecialTag.Value)
-		}
-	}
-	return buf.Bytes(), nil
-}
-
-func (t TodoTxt) MarshalText_() ([]byte, error) {
-	var buf bytes.Buffer
-
-	for i, g := range t.Groupings {
-		if len(g.Children) == 0 {
-			// Not an exhaustive check; there may be many nil-valued children.
-			continue
-		}
-		if i > 0 {
-			fmt.Fprintln(&buf)
-		}
-		if i == 0 && len(g.Header) == 0 {
-			g.Header = []string{"Inbox"}
-		}
-		fmt.Fprintf(&buf, "# %s\n\n", strings.Join(g.Header, " "))
-		for _, e := range g.Children {
-			if e == nil {
-				continue
-			}
-			line, err := e.MarshalText_()
-			if err != nil {
-				return nil, err
-			}
-			fmt.Fprintf(&buf, "%s\n", line)
-		}
-	}
-
-	return buf.Bytes(), nil
 }
 
 func main() {
@@ -239,12 +165,12 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		return *logged.Children[i].CompletionDate > *logged.Children[j].CompletionDate
 	})
 
-	result, err := t.MarshalText_()
+	bufOutput := bufio.NewWriter(output)
+	err := t.DumpText(bufOutput)
 	if err != nil {
 		return fmt.Errorf("unable to format: %w", err)
 	}
-	_, err = output.Write(result)
-	return err
+	return bufOutput.Flush()
 }
 
 func BuildParser() *participle.Parser {
