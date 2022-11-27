@@ -135,18 +135,29 @@ func main() {
 	filename := flag.String("f", "-", "todo.txt file path to process")
 	flag.Parse()
 
-	var input io.ReadCloser
-	if *filename == "-" {
-		input = os.Stdin
-	} else {
-		var err error
-		input, err = os.Open(*filename)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+	rawInputCh := make(chan []byte)
+	go func() {
+		defer close(rawInputCh)
+		var input io.ReadCloser
+		if *filename == "-" {
+			input = os.Stdin
+		} else {
+			var err error
+			input, err = os.Open(*filename)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		}
-	}
-	defer input.Close()
+		defer input.Close()
+
+		var buf bytes.Buffer
+		if _, err := io.Copy(&buf, input); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read %s: %v\n", *filename, err)
+			return
+		}
+		rawInputCh <- buf.Bytes()
+	}()
 
 	parser := BuildParser()
 	if *ebnf {
@@ -154,8 +165,12 @@ func main() {
 		return
 	}
 
+	rawInput, ok := <-rawInputCh
+	if !ok {
+		return
+	}
 	var t TodoTxt
-	err := Fmt(parser, time.Now(), os.Stdout, input)
+	err := Fmt(parser, time.Now(), os.Stdout, rawInput)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -171,9 +186,9 @@ func main() {
 	}
 }
 
-func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input io.Reader) error {
+func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byte) error {
 	var t TodoTxt
-	if err := parser.Parse("", input, &t); err != nil {
+	if err := parser.ParseBytes("", input, &t); err != nil {
 		return fmt.Errorf("parse error: %w", err)
 	}
 
