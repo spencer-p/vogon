@@ -52,7 +52,7 @@ type DescriptionPart struct {
 
 type SpecialTag struct {
 	Key   string `@Text`
-	Value string `":" @Text`
+	Value string `":" (@Text | @Date)`
 }
 
 func main() {
@@ -98,7 +98,9 @@ func main() {
 	var t TodoTxt
 	err := Fmt(parser, time.Now(), os.Stdout, rawInput)
 	if err != nil {
-		fmt.Println(err)
+		// If formatting failed, dump the original + an error.
+		fmt.Fprintln(os.Stderr, err)
+		os.Stderr.Write(rawInput)
 		os.Exit(1)
 	}
 
