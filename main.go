@@ -194,6 +194,7 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		"Today":     20,
 		"Scheduled": 30,
 		"Next":      40,
+		"Next week": 41,
 		"Someday":   50,
 		"Logged":    999,
 	}
