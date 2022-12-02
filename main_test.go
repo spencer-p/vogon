@@ -66,7 +66,7 @@ func TestFmt(t *testing.T) {
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
 			got := new(bytes.Buffer)
-			err := Fmt(parser, now, got, bytes.NewBuffer(tc.input))
+			err := Fmt(parser, now, got, tc.input)
 			if err != nil {
 				t.Errorf("unexpected error from Fmt: %v", err)
 				return

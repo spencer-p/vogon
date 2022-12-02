@@ -153,6 +153,27 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		*pe = nil
 	}
 
+	// Move scheduled for today to Today.
+	todayHeader := findGrouping(&t, "Today")
+	moveToToday := findEntries(&t, func(heading string, entry *Entry) bool {
+		if heading == "Today" {
+			return false // No need to move if already today.
+		}
+		scheduledFor, ok := entry.ScheduledFor()
+		if !ok {
+			return false // No scheduled date.
+		}
+		// Accept "t", "today", and the formatted date for today.
+		return scheduledFor == "t" || scheduledFor == "today" || scheduledFor == today
+	})
+	for _, pe := range moveToToday {
+		sliceRemove(&(*pe).Description, func(dp *DescriptionPart) bool {
+			return dp.SpecialTag != nil && stringIsScheduled(dp.SpecialTag.Key)
+		})
+		todayHeader.Children = append(todayHeader.Children, *pe)
+		*pe = nil
+	}
+
 	// Sort Logged.
 	sort.SliceStable(logged.Children, func(i, j int) bool {
 		// Sort nil or non-completed first. Noncompleted should not be in the Logged
@@ -165,6 +186,27 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		}
 
 		return *logged.Children[i].CompletionDate > *logged.Children[j].CompletionDate
+	})
+
+	// Sort the groupings by desired order.
+	headingPriority := map[string]int{
+		"Inbox":     10,
+		"Today":     20,
+		"Scheduled": 30,
+		"Next":      40,
+		"Someday":   50,
+		"Logged":    999,
+	}
+	sort.SliceStable(t.Groupings, func(i, j int) bool {
+		left, leftKnown := headingPriority[strings.Join(t.Groupings[i].Header, " ")]
+		right, rightKnown := headingPriority[strings.Join(t.Groupings[j].Header, " ")]
+
+		// If neither has a priority
+		if !leftKnown || !rightKnown {
+			return true
+		}
+
+		return left < right
 	})
 
 	bufOutput := bufio.NewWriter(output)
@@ -241,4 +283,15 @@ func findGrouping(t *TodoTxt, name string) *Grouping {
 		Header: []string{name},
 	})
 	return &t.Groupings[len(t.Groupings)-1]
+}
+
+func sliceRemove[T any](s *[]T, filter func(T) bool) {
+	result := make([]T, 0, len(*s)/2)
+	for i := range *s {
+		if filter((*s)[i]) {
+			continue // Removed.
+		}
+		result = append(result, (*s)[i])
+	}
+	*s = result
 }

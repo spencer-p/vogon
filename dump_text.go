@@ -52,15 +52,16 @@ func (e *Entry) DumpText(out io.Writer) error {
 }
 
 func (t TodoTxt) DumpText(out io.Writer) error {
+	skipped := 0
 	for i, g := range t.Groupings {
-		if len(g.Children) == 0 {
-			// Not an exhaustive check; there may be many nil-valued children.
+		if g.Len() == 0 {
+			skipped++
 			continue
 		}
-		if i > 0 {
+		if i-skipped > 0 {
 			fmt.Fprintln(out)
 		}
-		if i == 0 && len(g.Header) == 0 {
+		if i-skipped == 0 && len(g.Header) == 0 {
 			g.Header = []string{"Inbox"}
 		}
 		fmt.Fprintf(out, "# %s\n\n", strings.Join(g.Header, " "))
