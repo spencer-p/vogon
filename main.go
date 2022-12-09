@@ -13,6 +13,7 @@ import (
 
 	"github.com/alecthomas/participle/v2"
 	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/spencer-p/vogon/pkg/dates"
 )
 
 const (
@@ -120,25 +121,11 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		return fmt.Errorf("parse error: %w", err)
 	}
 
-	// Formatting goes here.
-	// Add creation dates.
-	// If completed, add completion date.
-	// Move completed to Logged with completion date.
-	// Move sched: to Scheduled.
-	// Move sched:today to Today.
-	// Sort Logged by completion date.
-	// Sort Scheduled by sched: date.
 	today := now.Format(dateFmt)
 	visitAllEntries(&t, func(heading string, entry *Entry) error {
-		// Add creation and completion dates.
+		// Add creation dates.
 		if entry.CreationDate == nil {
 			entry.CreationDate = &today
-		}
-		if heading == "Logged" {
-			entry.Completed = true
-		}
-		if entry.Completed && entry.CompletionDate == nil {
-			entry.CompletionDate = &today
 		}
 		return nil
 	})
@@ -162,7 +149,7 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 				return false // No scheduled date.
 			}
 			// Accept "t", "today", and the formatted date for today.
-			return scheduledFor == "t" || scheduledFor == "today" || scheduledFor <= today
+			return scheduledFor == "t" || scheduledFor == "today" || maybeNormalizeDate(now, scheduledFor) <= today
 		},
 		Transform: func(e *Entry) *Entry {
 			sliceRemove(&(*e).Description, func(dp *DescriptionPart) bool {
@@ -177,7 +164,7 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		SortLess: func(l, r *Entry) bool {
 			schedLeft, _ := l.ScheduledFor()
 			schedRight, _ := r.ScheduledFor()
-			return schedLeft < schedRight
+			return maybeNormalizeDate(now, schedLeft) < maybeNormalizeDate(now, schedRight)
 		},
 	}, {
 		Header: "Inbox",
@@ -274,4 +261,11 @@ func sliceRemove[T any](s *[]T, filter func(T) bool) {
 		result = append(result, (*s)[i])
 	}
 	*s = result
+}
+
+func maybeNormalizeDate(now time.Time, date string) string {
+	if norm, err := dates.ParseRelative(now, date); err == nil {
+		return norm.Format(dateFmt)
+	}
+	return date
 }
