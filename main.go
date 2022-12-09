@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -36,6 +35,7 @@ type Grouping struct {
 // }
 
 type Entry struct {
+	Header         string
 	Completed      bool               `@"x"?`
 	Priority       *string            `@Priority?`
 	CompletionDate *string            `(@Date`
@@ -143,72 +143,51 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		return nil
 	})
 
-	// Move completed to Logged.
-	logged := findGrouping(&t, "Logged")
-	completed := findEntries(&t, func(heading string, entry *Entry) bool {
-		return entry.Completed && heading != "Logged"
-	})
-	for _, pe := range completed {
-		logged.Children = append(logged.Children, *pe)
-		*pe = nil
-	}
-
-	// Move scheduled for today to Today.
-	todayHeader := findGrouping(&t, "Today")
-	moveToToday := findEntries(&t, func(heading string, entry *Entry) bool {
-		if heading == "Today" {
-			return false // No need to move if already today.
-		}
-		scheduledFor, ok := entry.ScheduledFor()
-		if !ok {
-			return false // No scheduled date.
-		}
-		// Accept "t", "today", and the formatted date for today.
-		return scheduledFor == "t" || scheduledFor == "today" || scheduledFor == today
-	})
-	for _, pe := range moveToToday {
-		sliceRemove(&(*pe).Description, func(dp *DescriptionPart) bool {
-			return dp.SpecialTag != nil && stringIsScheduled(dp.SpecialTag.Key)
-		})
-		todayHeader.Children = append(todayHeader.Children, *pe)
-		*pe = nil
-	}
-
-	// Sort Logged.
-	sort.SliceStable(logged.Children, func(i, j int) bool {
-		// Sort nil or non-completed first. Noncompleted should not be in the Logged
-		// suggestion. Required to tolerate bad input.
-		if logged.Children[i] == nil || logged.Children[i].Completed == false {
-			return true
-		}
-		if logged.Children[j] == nil || logged.Children[j].Completed == false {
-			return false
-		}
-
-		return *logged.Children[i].CompletionDate > *logged.Children[j].CompletionDate
-	})
-
-	// Sort the groupings by desired order.
-	headingPriority := map[string]int{
-		"Inbox":     10,
-		"Today":     20,
-		"Scheduled": 30,
-		"Next":      40,
-		"Next week": 41,
-		"Someday":   50,
-		"Logged":    999,
-	}
-	sort.SliceStable(t.Groupings, func(i, j int) bool {
-		left, leftKnown := headingPriority[strings.Join(t.Groupings[i].Header, " ")]
-		right, rightKnown := headingPriority[strings.Join(t.Groupings[j].Header, " ")]
-
-		// If neither has a priority
-		if !leftKnown || !rightKnown {
-			return true
-		}
-
-		return left < right
-	})
+	t = t.Compile([]HeaderCompiler{{
+		Header: "Logged",
+		Filter: func(header string, e *Entry) bool { return e.Completed == true },
+		Transform: func(e *Entry) *Entry {
+			e.Completed = true
+			if e.CompletionDate == nil {
+				e.CompletionDate = &today
+			}
+			return e
+		},
+		SortLess: func(l, r *Entry) bool { return *l.CompletionDate > *r.CompletionDate },
+	}, {
+		Header: "Today",
+		Filter: func(header string, e *Entry) bool {
+			scheduledFor, ok := e.ScheduledFor()
+			if !ok {
+				return false // No scheduled date.
+			}
+			// Accept "t", "today", and the formatted date for today.
+			return scheduledFor == "t" || scheduledFor == "today" || scheduledFor <= today
+		},
+		Transform: func(e *Entry) *Entry {
+			sliceRemove(&(*e).Description, func(dp *DescriptionPart) bool {
+				return dp.SpecialTag != nil && stringIsScheduled(dp.SpecialTag.Key)
+			})
+			return e
+		},
+		// No sorting for Today.
+	}, {
+		Header: "Scheduled",
+		Filter: func(header string, e *Entry) bool { _, ok := e.ScheduledFor(); return ok },
+		SortLess: func(l, r *Entry) bool {
+			schedLeft, _ := l.ScheduledFor()
+			schedRight, _ := r.ScheduledFor()
+			return schedLeft < schedRight
+		},
+	}, {
+		Header: "Inbox",
+		Filter: func(header string, e *Entry) bool { return header == "" },
+	}, {
+		Header:    "nop",
+		Filter:    func(header string, e *Entry) bool { return false },
+		Transform: func(e *Entry) *Entry { return e },
+		SortLess:  func(l, r *Entry) bool { return false },
+	}})
 
 	bufOutput := bufio.NewWriter(output)
 	err := t.DumpText(bufOutput)
