@@ -166,6 +166,17 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			schedRight, _ := r.ScheduledFor()
 			return maybeNormalizeDate(now, schedLeft) < maybeNormalizeDate(now, schedRight)
 		},
+		Transform: func(e *Entry) *Entry {
+			// Rewrite the scheduled date to canonical form instead of relative
+			// form, if needed.
+			for i := range e.Description {
+				if e.Description[i].SpecialTag != nil && stringIsScheduled(e.Description[i].SpecialTag.Key) {
+					date := maybeNormalizeDate(now, e.Description[i].SpecialTag.Value)
+					e.Description[i].SpecialTag.Value = date
+				}
+			}
+			return e
+		},
 	}, {
 		Header: "Inbox",
 		Filter: func(header string, e *Entry) bool { return header == "" },

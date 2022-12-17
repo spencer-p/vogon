@@ -9,6 +9,7 @@ import (
 
 func weekday(day time.Weekday) func(now time.Time) time.Time {
 	return func(now time.Time) time.Time {
+		now = now.AddDate(0, 0, 1)
 		for now.Weekday() != day {
 			now = now.AddDate(0, 0, 1)
 		}
