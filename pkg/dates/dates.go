@@ -28,6 +28,9 @@ var (
 )
 
 func ParseRelative(now time.Time, date string) (time.Time, error) {
+	if date, found := strings.CutPrefix(date, "next"); found {
+		return ParseRelative(now.AddDate(0, 0, 7), date)
+	}
 	switch strings.ToLower(date) {
 	case "tomorrow", "tom":
 		return now.AddDate(0, 0, 1), nil
