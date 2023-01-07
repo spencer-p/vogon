@@ -47,13 +47,26 @@ type Entry struct {
 type DescriptionPart struct {
 	Project    *string     `  "+"@Text`
 	Context    *string     `| "@"@Text`
-	SpecialTag *SpecialTag `| @@`
-	Text       []string    `| (@Text (?! ":"))+`
+	SpecialTag *SpecialTag `| @Tag`
+	Text       []string    `| (@Text)+`
 }
 
 type SpecialTag struct {
-	Key   string `@Text`
-	Value string `":" (@Text | @Date)`
+	Key   string
+	Value string
+}
+
+func (s *SpecialTag) Capture(values []string) error {
+	if len(values) != 1 {
+		return fmt.Errorf("expected exactly 1 tag, got %d", len(values))
+	}
+	key, value, ok := strings.Cut(values[0], ":")
+	if !ok {
+		return fmt.Errorf("cannot cut %q with `:`", values[0])
+	}
+	s.Key = key
+	s.Value = value
+	return nil
 }
 
 func main() {
@@ -204,7 +217,10 @@ func BuildParser() *participle.Parser {
 		Pattern: `\(([A-Z])\)`,
 	}, {
 		Name:    "Punct",
-		Pattern: `[\+@:#]`,
+		Pattern: `[\+@#]`,
+	}, {
+		Name:    "Tag",
+		Pattern: `[^\s]+:[^:\s]+`,
 	}, {
 		Name:    "Space",
 		Pattern: ` `,
@@ -213,7 +229,7 @@ func BuildParser() *participle.Parser {
 		Pattern: `\n+`,
 	}, {
 		Name:    "Text",
-		Pattern: `[^\s][^:\s]*`,
+		Pattern: `[^\s]+`,
 	}})
 	parser := participle.MustBuild(&TodoTxt{},
 		participle.Lexer(lex),
