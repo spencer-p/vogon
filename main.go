@@ -172,6 +172,26 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		},
 		// No sorting for Today.
 	}, {
+		Header: "Next",
+		Filter: func(header string, e *Entry) bool {
+			move, ok := e.Tag("move")
+			if !ok {
+				move, ok = e.ScheduledFor()
+			}
+			return ok && move == "next"
+		},
+		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
+	}, {
+		Header: "Someday",
+		Filter: func(header string, e *Entry) bool {
+			move, ok := e.Tag("move")
+			if !ok {
+				move, ok = e.ScheduledFor()
+			}
+			return ok && move == "someday"
+		},
+		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
+	}, {
 		Header: "Scheduled",
 		Filter: func(header string, e *Entry) bool { _, ok := e.ScheduledFor(); return ok },
 		SortLess: func(l, r *Entry) bool {
@@ -190,20 +210,6 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			}
 			return e
 		},
-	}, {
-		Header: "Next",
-		Filter: func(header string, e *Entry) bool {
-			move, ok := e.Tag("move")
-			return ok && move == "next"
-		},
-		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); return e },
-	}, {
-		Header: "Someday",
-		Filter: func(header string, e *Entry) bool {
-			move, ok := e.Tag("move")
-			return ok && move == "someday"
-		},
-		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); return e },
 	}, {
 		Header: "Inbox",
 		Filter: func(header string, e *Entry) bool { return header == "" },
