@@ -74,6 +74,7 @@ func (t TodoTxt) Compile(compilers []HeaderCompiler) TodoTxt {
 		"Scheduled": 30,
 		"Next":      40,
 		"Next week": 41,
+		"Waiting":   45,
 		"Someday":   50,
 		"Logged":    999,
 	}

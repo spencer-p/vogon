@@ -171,27 +171,13 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			return e
 		},
 		// No sorting for Today.
-	}, {
-		Header: "Next",
-		Filter: func(header string, e *Entry) bool {
-			move, ok := e.Tag("move")
-			if !ok {
-				move, ok = e.ScheduledFor()
-			}
-			return ok && move == "next"
-		},
-		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
-	}, {
-		Header: "Someday",
-		Filter: func(header string, e *Entry) bool {
-			move, ok := e.Tag("move")
-			if !ok {
-				move, ok = e.ScheduledFor()
-			}
-			return ok && move == "someday"
-		},
-		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
-	}, {
+	}, manualHeader(
+		"Next",
+	), manualHeader(
+		"Someday",
+	), manualHeader(
+		"Waiting",
+	), {
 		Header: "Scheduled",
 		Filter: func(header string, e *Entry) bool { _, ok := e.ScheduledFor(); return ok },
 		SortLess: func(l, r *Entry) bool {
@@ -315,4 +301,18 @@ func maybeNormalizeDate(now time.Time, date string) string {
 		return norm.Format(dateFmt)
 	}
 	return date
+}
+
+func manualHeader(headerName string) HeaderCompiler {
+	return HeaderCompiler{
+		Header: headerName,
+		Filter: func(header string, e *Entry) bool {
+			move, ok := e.Tag("move")
+			if !ok {
+				move, ok = e.ScheduledFor()
+			}
+			return ok && move == strings.ToLower(headerName)
+		},
+		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
+	}
 }
