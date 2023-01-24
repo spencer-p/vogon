@@ -74,7 +74,6 @@ func (t TodoTxt) Compile(compilers []HeaderCompiler) TodoTxt {
 		"Scheduled": 30,
 		"Next":      40,
 		"Next week": 41,
-		"Waiting":   45,
 		"Someday":   50,
 		"Logged":    999,
 	}
@@ -82,9 +81,19 @@ func (t TodoTxt) Compile(compilers []HeaderCompiler) TodoTxt {
 		left, leftKnown := headingPriority[strings.Join(result.Groupings[i].Header, " ")]
 		right, rightKnown := headingPriority[strings.Join(result.Groupings[j].Header, " ")]
 
-		// If neither has a priority
+		// If either is not an official header, then attempt to preserve their
+		// non-official ordering but leave them at the bottom, in between
+		// Next and Someday.
 		if !leftKnown || !rightKnown {
-			return true
+			if !leftKnown && !rightKnown {
+				// If they are both unknown, indicate !(i< j), and let the stable
+				// sort preserve the ordering.
+				return false
+			} else if !leftKnown {
+				return right >= headingPriority["Someday"]
+			} else { // !rightKnown
+				return left <= headingPriority["Next week"]
+			}
 		}
 
 		return left < right
