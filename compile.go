@@ -67,6 +67,11 @@ func (t TodoTxt) Compile(compilers []HeaderCompiler) TodoTxt {
 		})
 	}
 
+	existingPriorities := map[string]int{}
+	for i, g := range t.Groupings {
+		existingPriorities[strings.Join(g.Header, " ")] = i
+	}
+
 	// Sort the groupings by desired order.
 	headingPriority := map[string]int{
 		"Inbox":     10,
@@ -78,17 +83,19 @@ func (t TodoTxt) Compile(compilers []HeaderCompiler) TodoTxt {
 		"Logged":    999,
 	}
 	sort.SliceStable(result.Groupings, func(i, j int) bool {
-		left, leftKnown := headingPriority[strings.Join(result.Groupings[i].Header, " ")]
-		right, rightKnown := headingPriority[strings.Join(result.Groupings[j].Header, " ")]
+		leftHeader := strings.Join(result.Groupings[i].Header, " ")
+		rightHeader := strings.Join(result.Groupings[j].Header, " ")
+		left, leftKnown := headingPriority[leftHeader]
+		right, rightKnown := headingPriority[rightHeader]
 
 		// If either is not an official header, then attempt to preserve their
 		// non-official ordering but leave them at the bottom, in between
 		// Next and Someday.
 		if !leftKnown || !rightKnown {
 			if !leftKnown && !rightKnown {
-				// If they are both unknown, indicate !(i< j), and let the stable
-				// sort preserve the ordering.
-				return false
+				// If they are both unknown, then they both must be in
+				// the existingPriorities map.
+				return existingPriorities[leftHeader] < existingPriorities[rightHeader]
 			} else if !leftKnown {
 				return right >= headingPriority["Someday"]
 			} else { // !rightKnown
