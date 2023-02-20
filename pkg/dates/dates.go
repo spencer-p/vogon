@@ -38,7 +38,7 @@ func cutPrefix(str, prefix string) (string, bool) {
 }
 
 func ParseRelative(now time.Time, date string) (time.Time, error) {
-	if date, found := cutPrefix(date, "next"); found {
+	if date, found := CutPrefix(date, "next"); found {
 		return ParseRelative(now.AddDate(0, 0, 7), date)
 	}
 	switch strings.ToLower(date) {
