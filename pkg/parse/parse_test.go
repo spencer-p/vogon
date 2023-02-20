@@ -1,6 +1,8 @@
 package parse
 
 import (
+	"bytes"
+	"encoding/json"
 	"testing"
 
 	"github.com/spencer-p/vogon/pkg/ast"
@@ -14,7 +16,9 @@ func TestParse(t *testing.T) {
 	}{{
 		name: "simple",
 		input: `#Inbox
-		2022-01-01 foo bar baz`,
+		2022-01-01 foo
+		bar
+		2022-01-01 2021-12-01 baz`,
 	}, {
 		name: "two dates",
 		input: `#Inbox
@@ -41,7 +45,6 @@ func TestParse(t *testing.T) {
 		this is the second block
 		it has
 		three items`,
-		wantErr: false,
 	}}
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
@@ -50,6 +53,15 @@ func TestParse(t *testing.T) {
 			err := p.ParseString("testinput", tc.input, &result)
 			if gotErr := err != nil; gotErr != tc.wantErr {
 				t.Errorf("wantErr=%t, but got err=%q", tc.wantErr, err)
+			}
+
+			var buf bytes.Buffer
+			enc := json.NewEncoder(&buf)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(&result); err != nil {
+				t.Errorf("failed to serialize result: %v", err)
+			} else {
+				t.Logf("%s", buf.Bytes())
 			}
 		})
 	}

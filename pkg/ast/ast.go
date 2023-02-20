@@ -10,14 +10,13 @@ type TodoTxt struct {
 }
 
 type Grouping struct {
-	Header   []string `("#" @( Text+ ) Newline)?`
-	Children []*Entry `(@@ Newline?)*`
-	//Block []Block `(@@ Newline)*`
+	Header []string `("#" @( Text+ ) Newline)?`
+	Block  []Block  `@@*`
 }
 
-//type SubGrouping struct {
-//	Children []*Entry `(@@ Newline?)*`
-//}
+type Block struct {
+	Children []*Entry `(@@ Newline?)* Newline?`
+}
 
 type Entry struct {
 	Header         string
