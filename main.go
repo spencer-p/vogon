@@ -11,63 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alecthomas/participle/v2"
-	"github.com/alecthomas/participle/v2/lexer"
+	"github.com/spencer-p/vogon/pkg/ast"
 	"github.com/spencer-p/vogon/pkg/dates"
+	"github.com/spencer-p/vogon/pkg/parse"
+
+	"github.com/alecthomas/participle/v2"
 )
 
 const (
 	dateFmt = "2006-01-02"
 )
-
-type TodoTxt struct {
-	Groupings []Grouping `Newline* @@*`
-}
-
-type Grouping struct {
-	Header   []string `("#" @( Text+ ) Newline)?`
-	Children []*Entry `(@@ Newline?)*`
-	// SubGroupings []SubGrouping `@@*`
-}
-
-// type SubGrouping struct {
-// 	Header   []string `"#" "#" @( Text+ ) Newline`
-// 	Children []Entry  `(@@ Newline?)*`
-// }
-
-type Entry struct {
-	Header         string
-	Completed      bool               `@"x"?`
-	Priority       *string            `@Priority?`
-	CompletionDate *string            `(@Date`
-	CreationDate   *string            ` @Date | @Date)?`
-	Description    []*DescriptionPart `@@*`
-}
-
-type DescriptionPart struct {
-	Project    *string     `  "+"@Text`
-	Context    *string     `| "@"@Text`
-	SpecialTag *SpecialTag `| @Tag`
-	Text       []string    `| (@Text)+`
-}
-
-type SpecialTag struct {
-	Key   string
-	Value string
-}
-
-func (s *SpecialTag) Capture(values []string) error {
-	if len(values) != 1 {
-		return fmt.Errorf("expected exactly 1 tag, got %d", len(values))
-	}
-	key, value, ok := strings.Cut(values[0], ":")
-	if !ok {
-		return fmt.Errorf("cannot cut %q with `:`", values[0])
-	}
-	s.Key = key
-	s.Value = value
-	return nil
-}
 
 func main() {
 	ebnf := flag.Bool("ebnf", false, "Output EBNF")
@@ -99,7 +52,7 @@ func main() {
 		rawInputCh <- buf.Bytes()
 	}()
 
-	parser := BuildParser()
+	parser := parse.BuildParser()
 	if *ebnf {
 		fmt.Println(parser.String())
 		return
@@ -109,7 +62,7 @@ func main() {
 	if !ok {
 		return
 	}
-	var t TodoTxt
+	var t ast.TodoTxt
 	err := Fmt(parser, time.Now(), os.Stdout, rawInput)
 	if err != nil {
 		// If formatting failed, dump the original + an error.
@@ -129,13 +82,13 @@ func main() {
 }
 
 func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byte) error {
-	var t TodoTxt
+	var t ast.TodoTxt
 	if err := parser.ParseBytes("", input, &t); err != nil {
 		return fmt.Errorf("parse error: %w", err)
 	}
 
 	today := now.Format(dateFmt)
-	visitAllEntries(&t, func(heading string, entry *Entry) error {
+	visitAllEntries(&t, func(heading string, entry *ast.Entry) error {
 		// Add creation dates.
 		if entry.CreationDate == nil {
 			entry.CreationDate = &today
@@ -143,20 +96,20 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		return nil
 	})
 
-	t = t.Compile([]HeaderCompiler{{
+	t = Compile(t, []HeaderCompiler{{
 		Header: "Logged",
-		Filter: func(header string, e *Entry) bool { return e.Completed == true },
-		Transform: func(e *Entry) *Entry {
+		Filter: func(header string, e *ast.Entry) bool { return e.Completed == true },
+		Transform: func(e *ast.Entry) *ast.Entry {
 			e.Completed = true
 			if e.CompletionDate == nil {
 				e.CompletionDate = &today
 			}
 			return e
 		},
-		SortLess: func(l, r *Entry) bool { return *l.CompletionDate > *r.CompletionDate },
+		SortLess: func(l, r *ast.Entry) bool { return *l.CompletionDate > *r.CompletionDate },
 	}, {
 		Header: "Today",
-		Filter: func(header string, e *Entry) bool {
+		Filter: func(header string, e *ast.Entry) bool {
 			scheduledFor, ok := e.ScheduledFor()
 			if !ok {
 				return false // No scheduled date.
@@ -164,9 +117,9 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			// Accept "t", "today", and the formatted date for today.
 			return scheduledFor == "t" || scheduledFor == "today" || maybeNormalizeDate(now, scheduledFor) <= today
 		},
-		Transform: func(e *Entry) *Entry {
-			sliceRemove(&(*e).Description, func(dp *DescriptionPart) bool {
-				return dp.SpecialTag != nil && stringIsScheduled(dp.SpecialTag.Key)
+		Transform: func(e *ast.Entry) *ast.Entry {
+			ast.SliceRemove(&(*e).Description, func(dp *ast.DescriptionPart) bool {
+				return dp.SpecialTag != nil && ast.StringIsScheduled(dp.SpecialTag.Key)
 			})
 			return e
 		},
@@ -179,17 +132,17 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		"Waiting",
 	), {
 		Header: "Scheduled",
-		Filter: func(header string, e *Entry) bool { _, ok := e.ScheduledFor(); return ok },
-		SortLess: func(l, r *Entry) bool {
+		Filter: func(header string, e *ast.Entry) bool { _, ok := e.ScheduledFor(); return ok },
+		SortLess: func(l, r *ast.Entry) bool {
 			schedLeft, _ := l.ScheduledFor()
 			schedRight, _ := r.ScheduledFor()
 			return maybeNormalizeDate(now, schedLeft) < maybeNormalizeDate(now, schedRight)
 		},
-		Transform: func(e *Entry) *Entry {
+		Transform: func(e *ast.Entry) *ast.Entry {
 			// Rewrite the scheduled date to canonical form instead of relative
 			// form, if needed.
 			for i := range e.Description {
-				if e.Description[i].SpecialTag != nil && stringIsScheduled(e.Description[i].SpecialTag.Key) {
+				if e.Description[i].SpecialTag != nil && ast.StringIsScheduled(e.Description[i].SpecialTag.Key) {
 					date := maybeNormalizeDate(now, e.Description[i].SpecialTag.Value)
 					e.Description[i].SpecialTag.Value = date
 				}
@@ -198,12 +151,12 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		},
 	}, {
 		Header: "Inbox",
-		Filter: func(header string, e *Entry) bool { return header == "" },
+		Filter: func(header string, e *ast.Entry) bool { return header == "" },
 	}, {
 		Header:    "nop",
-		Filter:    func(header string, e *Entry) bool { return false },
-		Transform: func(e *Entry) *Entry { return e },
-		SortLess:  func(l, r *Entry) bool { return false },
+		Filter:    func(header string, e *ast.Entry) bool { return false },
+		Transform: func(e *ast.Entry) *ast.Entry { return e },
+		SortLess:  func(l, r *ast.Entry) bool { return false },
 	}})
 
 	bufOutput := bufio.NewWriter(output)
@@ -214,86 +167,50 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 	return bufOutput.Flush()
 }
 
-func BuildParser() *participle.Parser {
-	lex := lexer.MustSimple([]lexer.SimpleRule{{
-		Name:    "Date",
-		Pattern: `\d{4}-\d{2}-\d{2}`,
-	}, {
-		Name:    "Priority",
-		Pattern: `\(([A-Z])\)`,
-	}, {
-		Name:    "Punct",
-		Pattern: `[\+@#]`,
-	}, {
-		Name:    "Tag",
-		Pattern: `[^\s]+:[^:\s]+`,
-	}, {
-		Name:    "Space",
-		Pattern: ` `,
-	}, {
-		Name:    "Newline",
-		Pattern: `\n+`,
-	}, {
-		Name:    "Text",
-		Pattern: `[^\s]+`,
-	}})
-	parser := participle.MustBuild(&TodoTxt{},
-		participle.Lexer(lex),
-		participle.Elide("Space"),
-		participle.UseLookahead(1))
-	return parser
-}
-
-func visitAllEntries(t *TodoTxt, visit func(heading string, e *Entry) error) error {
+func visitAllEntries(t *ast.TodoTxt, visit func(heading string, e *ast.Entry) error) error {
 	for gi := range t.Groupings {
 		heading := strings.Join(t.Groupings[gi].Header, " ")
-		for ci := range t.Groupings[gi].Children {
-			err := visit(heading, t.Groupings[gi].Children[ci])
-			if err != nil {
-				return err
+		for bi := range t.Groupings[gi].Blocks {
+			for ci := range t.Groupings[gi].Blocks[bi].Children {
+				err := visit(heading, t.Groupings[gi].Blocks[bi].Children[ci])
+				if err != nil {
+					return err
+				}
 			}
 		}
+
 	}
 	return nil
 }
 
-func findEntries(t *TodoTxt, predicate func(heading string, e *Entry) bool) []**Entry {
-	var result []**Entry
+func findEntries(t *ast.TodoTxt, predicate func(heading string, e *ast.Entry) bool) []**ast.Entry {
+	var result []**ast.Entry
 	for gi := range t.Groupings {
 		heading := strings.Join(t.Groupings[gi].Header, " ")
-		for ci := range t.Groupings[gi].Children {
-			e := &t.Groupings[gi].Children[ci]
-			accept := predicate(heading, *e)
-			if accept {
-				result = append(result, e)
+		for bi := range t.Groupings[gi].Blocks {
+			for ci := range t.Groupings[gi].Blocks[bi].Children {
+				e := &t.Groupings[gi].Blocks[bi].Children[ci]
+				accept := predicate(heading, *e)
+				if accept {
+					result = append(result, e)
+				}
 			}
 		}
 	}
 	return result
 }
 
-func findGrouping(t *TodoTxt, name string) *Grouping {
+func findGrouping(t *ast.TodoTxt, name string) *ast.Grouping {
 	for gi := range t.Groupings {
 		if strings.Join(t.Groupings[gi].Header, " ") == name {
 			return &t.Groupings[gi]
 		}
 	}
 
-	t.Groupings = append(t.Groupings, Grouping{
+	t.Groupings = append(t.Groupings, ast.Grouping{
 		Header: []string{name},
 	})
 	return &t.Groupings[len(t.Groupings)-1]
-}
-
-func sliceRemove[T any](s *[]T, filter func(T) bool) {
-	result := make([]T, 0, len(*s)/2)
-	for i := range *s {
-		if filter((*s)[i]) {
-			continue // Removed.
-		}
-		result = append(result, (*s)[i])
-	}
-	*s = result
 }
 
 func maybeNormalizeDate(now time.Time, date string) string {
@@ -306,13 +223,13 @@ func maybeNormalizeDate(now time.Time, date string) string {
 func manualHeader(headerName string) HeaderCompiler {
 	return HeaderCompiler{
 		Header: headerName,
-		Filter: func(header string, e *Entry) bool {
+		Filter: func(header string, e *ast.Entry) bool {
 			move, ok := e.Tag("move")
 			if !ok {
 				move, ok = e.ScheduledFor()
 			}
 			return ok && move == strings.ToLower(headerName)
 		},
-		Transform: func(e *Entry) *Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
+		Transform: func(e *ast.Entry) *ast.Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
 	}
 }

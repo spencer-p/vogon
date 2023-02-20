@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/spencer-p/vogon/pkg/parse"
 )
 
 const (
@@ -62,7 +63,7 @@ func TestFmt(t *testing.T) {
 	}
 
 	now := time.Date(2022, time.January, 01, 0, 0, 0, 0, time.UTC)
-	parser := BuildParser()
+	parser := parse.BuildParser()
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
 			got := new(bytes.Buffer)

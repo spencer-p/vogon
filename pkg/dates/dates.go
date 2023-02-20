@@ -27,8 +27,18 @@ var (
 	Sunday    = weekday(time.Sunday)
 )
 
+func cutPrefix(str, prefix string) (string, bool) {
+	if len(str) < len(prefix) {
+		return "", false
+	}
+	if str[:len(prefix)] != prefix {
+		return "", false
+	}
+	return str[len(prefix):], true
+}
+
 func ParseRelative(now time.Time, date string) (time.Time, error) {
-	if date, found := strings.CutPrefix(date, "next"); found {
+	if date, found := cutPrefix(date, "next"); found {
 		return ParseRelative(now.AddDate(0, 0, 7), date)
 	}
 	switch strings.ToLower(date) {

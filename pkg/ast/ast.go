@@ -11,7 +11,7 @@ type TodoTxt struct {
 
 type Grouping struct {
 	Header []string `("#" @( Text+ ) Newline)?`
-	Block  []Block  `@@*`
+	Blocks []Block  `@@*`
 }
 
 type Block struct {
