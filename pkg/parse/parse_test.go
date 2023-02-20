@@ -13,6 +13,7 @@ func TestParse(t *testing.T) {
 		name    string
 		input   string
 		wantErr bool
+		assert  func(t *testing.T, result ast.TodoTxt)
 	}{{
 		name: "simple",
 		input: `#Inbox
@@ -38,13 +39,19 @@ func TestParse(t *testing.T) {
 		wantErr: true,
 	}, {
 		name: "block spacing",
-		input: `#Inbox
+		input: `# Inbox
 		this is one block
 		it has two items
-		
+
 		this is the second block
 		it has
 		three items`,
+		assert: func(t *testing.T, result ast.TodoTxt) {
+			got := len(result.Groupings[0].Blocks)
+			if want := 2; got != want {
+				t.Errorf("wanted %d blocks, got %d", want, got)
+			}
+		},
 	}}
 	for _, tc := range table {
 		t.Run(tc.name, func(t *testing.T) {
@@ -53,6 +60,10 @@ func TestParse(t *testing.T) {
 			err := p.ParseString("testinput", tc.input, &result)
 			if gotErr := err != nil; gotErr != tc.wantErr {
 				t.Errorf("wantErr=%t, but got err=%q", tc.wantErr, err)
+			}
+
+			if tc.assert != nil {
+				tc.assert(t, result)
 			}
 
 			var buf bytes.Buffer

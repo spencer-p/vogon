@@ -25,7 +25,7 @@ func BuildParser() *participle.Parser {
 		Pattern: `( |\t)`,
 	}, {
 		Name:    "Newline",
-		Pattern: `\n+`,
+		Pattern: `\n`,
 	}, {
 		Name:    "Text",
 		Pattern: `[^\s]+`,

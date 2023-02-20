@@ -22,10 +22,13 @@ const (
 	dateFmt = "2006-01-02"
 )
 
+var (
+	ebnf     = flag.Bool("ebnf", false, "Output EBNF")
+	verbose  = flag.Bool("v", false, "Print more")
+	filename = flag.String("f", "-", "todo.txt file path to process")
+)
+
 func main() {
-	ebnf := flag.Bool("ebnf", false, "Output EBNF")
-	verbose := flag.Bool("v", false, "Print more")
-	filename := flag.String("f", "-", "todo.txt file path to process")
 	flag.Parse()
 
 	rawInputCh := make(chan []byte)
@@ -62,13 +65,20 @@ func main() {
 	if !ok {
 		return
 	}
-	var t ast.TodoTxt
 	err := Fmt(parser, time.Now(), os.Stdout, rawInput)
 	if err != nil {
 		// If formatting failed, dump the original + an error.
 		fmt.Fprintln(os.Stderr, err)
 		os.Stderr.Write(rawInput)
 		os.Exit(1)
+	}
+
+}
+
+func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byte) error {
+	var t ast.TodoTxt
+	if err := parser.ParseBytes("", input, &t); err != nil {
+		return fmt.Errorf("parse error: %w", err)
 	}
 
 	if *verbose {
@@ -78,13 +88,6 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-	}
-}
-
-func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byte) error {
-	var t ast.TodoTxt
-	if err := parser.ParseBytes("", input, &t); err != nil {
-		return fmt.Errorf("parse error: %w", err)
 	}
 
 	today := now.Format(dateFmt)
