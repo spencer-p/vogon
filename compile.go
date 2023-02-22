@@ -21,6 +21,7 @@ func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
 		origHeader := strings.Join(grouping.Header, " ")
 		for blockNum, block := range grouping.Blocks {
 			for _, e := range block.Children {
+				insertBlock := blockNum
 				dstHeader := origHeader
 				var currentTransform func(*ast.Entry) *ast.Entry
 				for _, compiler := range compilers {
@@ -35,7 +36,7 @@ func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
 						if compiler.Header != origHeader {
 							// If this entry is moving headers, put it in the
 							// first block of the header.
-							blockNum = 0
+							insertBlock = 0
 						}
 						goto insert // Already transformed, go straight to insert.
 					} else if compiler.Header == origHeader {
@@ -56,10 +57,10 @@ func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
 				}
 
 			insert:
-				for len(newEntries[dstHeader]) <= blockNum {
+				for len(newEntries[dstHeader]) <= insertBlock {
 					newEntries[dstHeader] = append(newEntries[dstHeader], ast.Block{})
 				}
-				newEntries[dstHeader][blockNum].Children = append(newEntries[dstHeader][blockNum].Children, e)
+				newEntries[dstHeader][insertBlock].Children = append(newEntries[dstHeader][insertBlock].Children, e)
 			}
 		}
 	}
