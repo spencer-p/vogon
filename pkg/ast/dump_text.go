@@ -66,6 +66,10 @@ func (t TodoTxt) DumpText(out io.Writer) error {
 		}
 		fmt.Fprintf(out, "# %s\n\n", strings.Join(g.Header, " "))
 		for blockNum, b := range g.Blocks {
+			if len(b.Children) == 0 {
+				// Don't print out an empty block.
+				continue
+			}
 			for _, e := range b.Children {
 				if e == nil {
 					continue
