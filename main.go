@@ -117,8 +117,9 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			if !ok {
 				return false // No scheduled date.
 			}
+			norm, err := normalizeDate(now, scheduledFor)
 			// Accept "t", "today", and the formatted date for today.
-			return scheduledFor == "t" || scheduledFor == "today" || maybeNormalizeDate(now, scheduledFor) <= today
+			return scheduledFor == "t" || scheduledFor == "today" || (err == nil && norm <= today)
 		},
 		Transform: func(e *ast.Entry) *ast.Entry {
 			ast.SliceRemove(&(*e).Description, func(dp *ast.DescriptionPart) bool {
@@ -221,6 +222,16 @@ func maybeNormalizeDate(now time.Time, date string) string {
 		return norm.Format(dateFmt)
 	}
 	return date
+}
+
+func normalizeDate(now time.Time, date string) (string, error) {
+	if norm, err := dates.ParseRelative(now, date); err == nil {
+		return norm.Format(dateFmt), nil
+	}
+	if _, err := time.Parse(dateFmt, date); err == nil {
+		return date, nil
+	}
+	return "", fmt.Errorf("date %q is not a relative date or YYYY-MM-DD", date)
 }
 
 func manualHeader(headerName string) HeaderCompiler {
