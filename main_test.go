@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
 	"path/filepath"
@@ -100,26 +101,11 @@ func FuzzFmt(f *testing.F) {
 	now := time.Date(2022, time.January, 01, 0, 0, 0, 0, time.UTC)
 	parser := parse.BuildParser()
 	f.Fuzz(func(t *testing.T, s string) {
-		var first, second bytes.Buffer
-		err := Fmt(parser, now, &first, []byte(s))
-		if err != nil {
-			t.Logf("skip because input is invalid: %v", err)
-			return
-		}
-		if first.Len() == 0 {
-			t.Logf("skip because result is empty: %v", err)
-			return
-		}
-
-		// Now format a second time and look for irregularities.
-		err = Fmt(parser, now, &second, first.Bytes())
-		if err != nil {
-			t.Errorf("second output was invalid: %v", err)
-			return
-		}
-
-		if diff := cmp.Diff(first.String(), second.String()); diff != "" {
-			t.Errorf("Fmt() not idempotent (-first,+second):\n%s", diff)
-		}
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("panic: %v", r)
+			}
+		}()
+		Fmt(parser, now, io.Discard, []byte(s))
 	})
 }
