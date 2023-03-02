@@ -78,3 +78,48 @@ func TestFmt(t *testing.T) {
 		})
 	}
 }
+
+func FuzzFmt(f *testing.F) {
+	if err := filepath.WalkDir(dataPath, func(path string, d fs.DirEntry, err error) error {
+		if !strings.HasSuffix(path, ".input") {
+			return nil
+		}
+
+		contents, err := ioutil.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to dump contents of %q: %w", path, err)
+		}
+
+		f.Add(string(contents))
+
+		return nil
+	}); err != nil {
+		f.Errorf("Failed to load test data: %v", err)
+	}
+
+	now := time.Date(2022, time.January, 01, 0, 0, 0, 0, time.UTC)
+	parser := parse.BuildParser()
+	f.Fuzz(func(t *testing.T, s string) {
+		var first, second bytes.Buffer
+		err := Fmt(parser, now, &first, []byte(s))
+		if err != nil {
+			t.Logf("skip because input is invalid: %v", err)
+			return
+		}
+		if first.Len() == 0 {
+			t.Logf("skip because result is empty: %v", err)
+			return
+		}
+
+		// Now format a second time and look for irregularities.
+		err = Fmt(parser, now, &second, first.Bytes())
+		if err != nil {
+			t.Errorf("second output was invalid: %v", err)
+			return
+		}
+
+		if diff := cmp.Diff(first.String(), second.String()); diff != "" {
+			t.Errorf("Fmt() not idempotent (-first,+second):\n%s", diff)
+		}
+	})
+}
