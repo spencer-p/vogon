@@ -14,6 +14,7 @@ import (
 	"github.com/spencer-p/vogon/pkg/ast"
 	"github.com/spencer-p/vogon/pkg/dates"
 	"github.com/spencer-p/vogon/pkg/parse"
+	"github.com/spencer-p/vogon/pkg/ui"
 
 	"github.com/alecthomas/participle/v2"
 )
@@ -23,9 +24,10 @@ const (
 )
 
 var (
-	ebnf     = flag.Bool("ebnf", false, "Output EBNF")
-	verbose  = flag.Bool("v", false, "Print more")
-	filename = flag.String("f", "-", "todo.txt file path to process")
+	ebnf        = flag.Bool("ebnf", false, "Output EBNF")
+	verbose     = flag.Bool("v", false, "Print more")
+	filename    = flag.String("f", "-", "todo.txt file path to process")
+	interactive = flag.Bool("ui", false, "Open interactive UI")
 )
 
 func main() {
@@ -65,6 +67,19 @@ func main() {
 	if !ok {
 		return
 	}
+
+	if *interactive {
+		var t ast.TodoTxt
+		if err := parser.ParseBytes("", rawInput, &t); err != nil {
+			fmt.Fprintf(os.Stderr, "parse error: %w", err)
+			return
+		}
+		if err := ui.Run(&t); err != nil {
+			fmt.Fprintf(os.Stderr, "run ui: %w", err)
+		}
+		return
+	}
+
 	err := Fmt(parser, time.Now(), os.Stdout, rawInput)
 	if err != nil {
 		// If formatting failed, dump the original + an error.
