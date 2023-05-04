@@ -113,13 +113,26 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 	}, {
 		Header: "Today",
 		Filter: func(header string, e *ast.Entry) bool {
-			scheduledFor, ok := e.ScheduledFor()
-			if !ok {
-				return false // No scheduled date.
+			dueDate, hasDueDate := e.DueDate()
+			scheduledFor, hasScheduled := e.ScheduledFor()
+			if !hasDueDate && !hasScheduled {
+				return false // No scheduled or due date.
 			}
-			norm, err := normalizeDate(now, scheduledFor)
+
+			// Check for scheduled date.
 			// Accept "t", "today", and the formatted date for today.
-			return scheduledFor == "t" || scheduledFor == "today" || (err == nil && norm <= today)
+			norm, err := normalizeDate(now, scheduledFor)
+			if scheduledFor == "t" || scheduledFor == "today" || (err == nil && norm <= today) {
+				return true
+			}
+
+			// Check for due date.
+			norm, err = normalizeDate(now, dueDate)
+			if err == nil && norm <= today {
+				return true
+			}
+			return false
+
 		},
 		Transform: func(e *ast.Entry) *ast.Entry {
 			ast.SliceRemove(&(*e).Description, func(dp *ast.DescriptionPart) bool {

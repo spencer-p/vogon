@@ -14,6 +14,20 @@ func (e *Entry) ScheduledFor() (date string, found bool) {
 	return
 }
 
+func (e *Entry) DueDate() (date string, found bool) {
+	if e == nil {
+		return
+	}
+	for _, dp := range e.Description {
+		if dp.SpecialTag != nil && dp.SpecialTag.Key == "due" {
+			date = dp.SpecialTag.Value
+			found = true
+			return
+		}
+	}
+	return
+}
+
 func (e *Entry) Tag(key string) (value string, found bool) {
 	if e == nil {
 		return
