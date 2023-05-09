@@ -257,6 +257,6 @@ func manualHeader(headerName string) HeaderCompiler {
 			}
 			return ok && move == strings.ToLower(headerName)
 		},
-		Transform: func(e *ast.Entry) *ast.Entry { e.RemoveTag("move"); e.RemoveTag("sched"); return e },
+		Transform: func(e *ast.Entry) *ast.Entry { e.RemoveTag("move"); e.RemoveTag("sched"); e.RemoveTag("s"); return e },
 	}
 }
