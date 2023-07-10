@@ -25,7 +25,7 @@ syntax keyword sched	contained Scheduled
 syntax keyword log		contained Logged
 
 syntax match project	'\(^\|\W\)+[^[:blank:]]\+'	contains=NONE
-syntax match context	'\(^\|\W\)@[^[:blank:]]\+'	contains=NONE
+syntax match context	'\(^\|\W\)@[^'[:blank:]]\+'	contains=NONE
 syntax match date		'\d\{2,4\}-\d\{2\}-\d\{2\}' contains=NONE
 syntax match complete	'^x\>'						contains=NONE
 syntax match specialTag	'\(^\|\W\)[^[:blank:]]\+:[^[:blank:]]\+'	contains=NONE
