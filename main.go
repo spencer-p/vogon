@@ -142,11 +142,11 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		},
 		// No sorting for Today.
 	}, manualHeader(
-		"Next",
+		"Next", now,
 	), manualHeader(
-		"Someday",
+		"Someday", now,
 	), manualHeader(
-		"Waiting",
+		"Waiting", now,
 	), {
 		Header: "Scheduled",
 		Filter: func(header string, e *ast.Entry) bool { _, ok := e.ScheduledFor(); return ok },
@@ -169,6 +169,10 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 	}, {
 		Header: "Inbox",
 		Filter: func(header string, e *ast.Entry) bool { return header == "" },
+		Transform: func(e *ast.Entry) *ast.Entry {
+			normalizeDateTag(e, now, "due")
+			return e
+		},
 	}, {
 		Header:    "nop",
 		Filter:    func(header string, e *ast.Entry) bool { return false },
@@ -247,7 +251,7 @@ func normalizeDate(now time.Time, date string) (string, error) {
 	return "", fmt.Errorf("date %q is not a relative date or YYYY-MM-DD", date)
 }
 
-func manualHeader(headerName string) HeaderCompiler {
+func manualHeader(headerName string, now time.Time) HeaderCompiler {
 	return HeaderCompiler{
 		Header: headerName,
 		Filter: func(header string, e *ast.Entry) bool {
@@ -257,6 +261,26 @@ func manualHeader(headerName string) HeaderCompiler {
 			}
 			return ok && move == strings.ToLower(headerName)
 		},
-		Transform: func(e *ast.Entry) *ast.Entry { e.RemoveTag("move"); e.RemoveTag("sched"); e.RemoveTag("s"); return e },
+		Transform: func(e *ast.Entry) *ast.Entry {
+			e.RemoveTag("move")
+			e.RemoveTag("sched")
+			e.RemoveTag("s")
+			normalizeDateTag(e, now, "due")
+			return e
+		},
+	}
+}
+
+func normalizeDateTag(e *ast.Entry, now time.Time, tags ...string) {
+	tagLookup := make(map[string]bool)
+	for _, t := range tags {
+		tagLookup[t] = true
+	}
+
+	for i := range e.Description {
+		if e.Description[i].SpecialTag != nil && tagLookup[e.Description[i].SpecialTag.Key] {
+			date := maybeNormalizeDate(now, e.Description[i].SpecialTag.Value)
+			e.Description[i].SpecialTag.Value = date
+		}
 	}
 }
