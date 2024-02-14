@@ -94,6 +94,7 @@ func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
 	headingPriority := map[string]int{
 		"Inbox":     10,
 		"Today":     20,
+		"Evening":   21,
 		"Scheduled": 30,
 		"Next":      40,
 		"Next week": 41,

@@ -147,6 +147,8 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 		"Someday", now,
 	), manualHeader(
 		"Waiting", now,
+	), manualHeader(
+		"Evening", now,
 	), {
 		Header: "Scheduled",
 		Filter: func(header string, e *ast.Entry) bool { _, ok := e.ScheduledFor(); return ok },
