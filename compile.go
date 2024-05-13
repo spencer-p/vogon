@@ -11,7 +11,8 @@ type HeaderCompiler struct {
 	Header    string
 	Filter    func(string, *ast.Entry) bool
 	Transform func(*ast.Entry) *ast.Entry
-	SortLess  func(l, r *ast.Entry) bool
+	SortLess  func(l, r *ast.Entry) bool    // Optional.
+	ReBlock   func([]ast.Block) []ast.Block // Optional.
 }
 
 func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
@@ -68,6 +69,9 @@ func Compile(t ast.TodoTxt, compilers []HeaderCompiler) ast.TodoTxt {
 	var result ast.TodoTxt
 	sortLookup := sliceToMap(compilers, func(c HeaderCompiler) string { return c.Header })
 	for header, blocks := range newEntries {
+		if compiler, ok := sortLookup[header]; ok && compiler.ReBlock != nil {
+			blocks = compiler.ReBlock(blocks)
+		}
 		if compiler, ok := sortLookup[header]; ok && compiler.SortLess != nil {
 			for _, block := range blocks {
 				sort.SliceStable(block.Children, func(i, j int) bool {

@@ -1,5 +1,7 @@
 package ast
 
+import "time"
+
 func (e *Entry) ScheduledFor() (date string, found bool) {
 	if e == nil {
 		return
@@ -47,6 +49,16 @@ func (e *Entry) RemoveTag(key string) {
 	SliceRemove(&e.Description, func(dp *DescriptionPart) bool {
 		return dp.SpecialTag != nil && dp.SpecialTag.Key == key
 	})
+}
+
+func (e *Entry) CompletedWeek() int {
+	if e.CompletionDate == nil {
+		return 0
+	}
+	t, _ := time.Parse("2006-01-02", *e.CompletionDate)
+	year, week := t.ISOWeek()
+	return year*100 + week
+
 }
 
 func StringIsScheduled(str string) bool {

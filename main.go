@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -110,6 +111,7 @@ func Fmt(parser *participle.Parser, now time.Time, output io.Writer, input []byt
 			return e
 		},
 		SortLess: func(l, r *ast.Entry) bool { return *l.CompletionDate > *r.CompletionDate },
+		ReBlock:  blockByWeek,
 	}, {
 		Header: "Today",
 		Filter: func(header string, e *ast.Entry) bool {
@@ -285,4 +287,48 @@ func normalizeDateTag(e *ast.Entry, now time.Time, tags ...string) {
 			e.Description[i].SpecialTag.Value = date
 		}
 	}
+}
+
+func partition[T any](l []T, f func(T) bool) [][]T {
+	head := make([]T, 0)
+	tail := make([]T, 0)
+	for _, li := range l {
+		if f(li) {
+			head = append(head, li)
+		} else {
+			tail = append(tail, li)
+		}
+	}
+	return [][]T{head, tail}
+}
+
+// blockByWeek splits the first block based on the week it was completed in.
+// It only splits the first week to avoid sorting an entire logbook.
+// The first block is only split in two. The first new block may have
+// completion dates spread over multiple weeks. The second new block is
+// guaranteed to be only items completed in a single week (the oldest week
+// present in the initial first block).
+// Repeating this process converges on fully split weeks.
+func blockByWeek(blocks []ast.Block) []ast.Block {
+	if len(blocks) == 0 {
+		return blocks
+	}
+	if len(blocks[0].Children) == 0 {
+		return blocks
+	}
+
+	firstblock := blocks[0]
+	minweek := firstblock.Children[0].CompletedWeek()
+	for _, e := range firstblock.Children {
+		if week := e.CompletedWeek(); week < minweek {
+			minweek = week
+		}
+	}
+	split := partition(firstblock.Children, func(e *ast.Entry) bool {
+		return e.CompletedWeek() > minweek
+	})
+	return slices.Replace(blocks, 0, 1,
+		ast.Block{Children: split[0]},
+		ast.Block{Children: split[1]},
+	)
 }
