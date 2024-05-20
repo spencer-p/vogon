@@ -47,6 +47,10 @@ func (e *Entry) DumpText(out io.Writer) error {
 			out.Write([]byte(p.SpecialTag.Value))
 		}
 	}
+	for _, line := range e.Notes {
+		out.Write([]byte("\n           | "))
+		fmt.Fprint(out, strings.Join(line.Text, " "))
+	}
 	fmt.Fprintln(out)
 	return nil
 }

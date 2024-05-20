@@ -25,6 +25,7 @@ type Entry struct {
 	CompletionDate *string            `(@Date`
 	CreationDate   *string            ` @Date | @Date)?`
 	Description    []*DescriptionPart `@@*`
+	Notes          []NoteLine         `@@*`
 }
 
 type DescriptionPart struct {
@@ -32,6 +33,10 @@ type DescriptionPart struct {
 	Context    *string     `| "@"@Text`
 	SpecialTag *SpecialTag `| @Tag`
 	Text       []string    `| (@Text)+`
+}
+
+type NoteLine struct {
+	Text []string `Newline "|" @Text*`
 }
 
 type SpecialTag struct {

@@ -1,0 +1,7 @@
+# Inbox
+
+  2024-01-01 This is an item with notes schedule:today
+     | This is a note line.
+         | It can have two lines.
+  2024-01-02 Other tasks can start normally.
+  2024-01-02 | This line is cursed. move:someday
