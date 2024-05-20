@@ -31,6 +31,7 @@ syntax match context	'\(^\|\W\)@[^'[:blank:]]\+'	contains=NONE
 syntax match date		'\d\{2,4\}-\d\{2\}-\d\{2\}' contains=NONE
 syntax match complete	'^x\>'						contains=NONE
 syntax match specialTag	'\(^\|\W\)[^[:blank:]]\+:[^[:blank:]]\+'	contains=NONE
+syntax match notestart  '^ *|'  contains=NONE
 
 highlight default link today	TodoToday
 highlight default link eve	TodoEve
@@ -45,5 +46,6 @@ highlight default link context	Label
 highlight default link date		Comment
 highlight default link complete	Delimiter
 highlight default link specialTag		Comment
+highlight default link notestart  Comment
 
 syntax region todoFold start='^#' end=/^#/me=s-2 transparent fold

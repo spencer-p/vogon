@@ -15,3 +15,7 @@ let l:curw = winsaveview()
 %!vogon -f -
 call winrestview(l:curw)
 endfunction
+
+" Set a pipe character with space following as a comment,
+" which allows for easier note writing.
+setlocal comments+=b:\|
