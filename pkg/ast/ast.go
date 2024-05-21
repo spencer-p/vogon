@@ -36,7 +36,7 @@ type DescriptionPart struct {
 }
 
 type NoteLine struct {
-	Text []string `Newline "|" @Text*`
+	Text []string `Newline "|" (@Text | @Tag)*`
 }
 
 type SpecialTag struct {
