@@ -48,8 +48,10 @@ func (e *Entry) DumpText(out io.Writer) error {
 		}
 	}
 	for _, line := range e.Notes {
-		out.Write([]byte("\n           | "))
-		fmt.Fprint(out, strings.Join(line.Text, " "))
+		out.Write([]byte("\n           |"))
+		for _, block := range line.Text {
+			fmt.Fprintf(out, " %s", block)
+		}
 	}
 	fmt.Fprintln(out)
 	return nil
